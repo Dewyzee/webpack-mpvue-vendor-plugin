@@ -20,8 +20,8 @@ function mpvueVendorPlugin() {
 
 mpvueVendorPlugin.prototype.apply = function(compiler) {
   compiler.plugin("emit", (compilation, callback) => {
-    let regExp = /\.js$/;
-    let filesName = Object.keys(compilation.assets).filter(name =>
+    const regExp = /\.js$/;
+    const filesName = Object.keys(compilation.assets).filter(name =>
       name.match(regExp)
     );
     filesName.forEach(name => {
@@ -37,6 +37,26 @@ mpvueVendorPlugin.prototype.apply = function(compiler) {
       };
     });
     callback();
+  });
+  compiler.plugin('compilation', (compilation) => {
+    compilation.plugin('additional-chunk-assets', () => {
+      const fileName = 'common/vendor.js';
+      const asset = compilation.assets[fileName];
+      if (asset) {
+        let fileContent = asset.source();
+        compilation.assets[fileName] = {
+          source: () => {
+            let from = /g\s=\s\(function\(\)\s\{\r?\n?\s+return\sthis;\r?\n?\s*\}\)\(\)\;/;
+            let to = `g = (function() { return typeof global !== 'undefined' ? global : this; })();`
+            fileContent = fileContent.replace(from, to)
+            return fileContent;
+          },
+          size: () => {
+            return Buffer.byteLength(fileContent, 'utf8');
+          }
+        };
+      }
+    });
   });
 };
 
